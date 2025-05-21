@@ -1,0 +1,196 @@
+# Echojs 🔁
+
+**Echojs** is a lightweight, vanilla JavaScript reactive framework for building highly responsive DOM applications with minimal abstraction and no virtual DOM.
+
+---
+
+## 📦 Usage Example
+
+The example project implements a reactive Todo app using all Echojs core features.
+
+---
+
+## 🔧 Public API
+
+Below are all the publicly used methods and contracts in this app:
+
+### 🧠 Reactivity Engine
+
+#### `createState(obj, { deep = true })`
+Creates a reactive proxy from a plain object or array.
+
+- If `deep: true`, nested objects are recursively proxied.
+- If `deep: false`, creates a shallow reactive state (used for local state).
+
+```js
+const state = createState({ todos: [] }); // deeply reactive
+```
+
+---
+
+#### `effect(fn)`
+Registers a reactive computation. Re-runs `fn` when any tracked dependency changes.
+
+```js
+const stop = effect(() => {
+  console.log(state.todos.length);
+});
+```
+
+- Automatically tracks reads to reactive properties inside `fn`.
+- Returns a disposable effect object:
+  ```js
+  effect().dispose();
+  ```
+
+---
+
+#### `batch(fn)`
+Executes updates inside `fn` in a single batch. Delays reactive effects until `fn` completes.
+
+```js
+batch(() => {
+  state.count++;
+  state.flag = true;
+});
+```
+
+---
+
+### 🧩 Local State
+
+#### `createLocalState(key, initial)`
+Creates or retrieves a shallow component-scoped reactive state associated with a unique key.
+
+```js
+const localState = createLocalState(item.id, { count: 0 });
+```
+
+> Use this to store ephemeral UI state like counters, toggles, or animation flags.
+
+---
+
+#### `disposeLocalState(key)`
+Removes ephemeral state associated with a key. Used during DOM unmounting.
+
+```js
+disposeLocalState(item.id);
+```
+
+---
+
+### ♻️ Lifecycle Management
+
+#### `registerDisposal(domNode, disposeFn)`
+Registers a function to be called when the node is removed from the DOM.
+
+```js
+registerDisposal(li, () => {
+  effect.dispose();
+  disposeLocalState(item.id);
+});
+```
+
+> Ensures memory safety and untracked state.
+
+---
+
+### 📃 List Management
+
+#### `mountList(container, items, getKey, renderItem)`
+Mounts and updates a list of reactive items into a container.
+
+```js
+const unmount = mountList(
+  document.getElementById('todoList'),
+  state.todos,
+  item => item.id,
+  createTodoItem
+);
+```
+
+- Diffs the item list using `getKey(item)`
+- Mounts new items using `renderItem(item)`
+- Disposes and removes unmounted nodes
+- Returns an `unmount()` function to clean up everything manually
+
+---
+
+## 📌 Reactivity Rules & Gotchas
+
+### ❗ Reactive Mutation Rules
+
+> 🚫 Do **not** mutate reactive arrays directly with `push`, `splice`, etc.
+>
+> ✅ Instead, **replace** the array reference to trigger reactivity:
+
+```js
+// ❌ Doesn't trigger reactivity
+state.todos.push({ id: 1, text: 'Oops' });
+
+// ✅ Triggers reactivity
+state.todos = [...state.todos, { id: 1, text: 'Works!' }];
+```
+
+### 🔍 Why?
+Echojs tracks the **reference** of reactive state (e.g. `state.todos`). Mutating the internal array does not change the reference, so effects won’t re-run.
+
+> Even though Echojs has a custom `ReactiveArray` with `trigger()` support, you must *reassign* to trigger top-level effects.
+
+---
+
+### 🧼 Disposal Is Manual
+Echojs does not use a virtual DOM. You **must** call `registerDisposal()` and clean up per-node effects or local state to avoid memory leaks.
+
+---
+
+## ✅ Best Practices
+
+- Always `disposeEffect()` and `disposeLocalState()` when unmounting
+- Wrap multiple updates in `batch()` to avoid redundant re-renders
+- Use `createLocalState()` for ephemeral per-component state
+- Use `mountList()` for dynamic lists that respond to changes
+
+---
+
+## 📂 Project Structure
+
+```
+.
+├── echojs/
+│   ├── lifecycle.js      # Disposal system
+│   ├── list.js           # mountList logic
+│   ├── local.js          # createLocalState & cleanup
+│   ├── reactivity.js     # Core reactivity engine
+│   └── state.js          # Reactive proxies and ReactiveArray
+├── main.js               # Application logic
+└── index.html            # DOM container
+```
+
+---
+
+## 📚 Credits
+
+Inspired by concepts from:
+- Vue's fine-grained reactivity
+- SolidJS's local state and disposal
+- Svelte's reactive assignment rules
+
+---
+
+## 🧪 Todo App Demo
+
+Implemented features:
+- Reactive global todo list (`state.todos`)
+- Local per-item state for counters
+- Disposal of local state and effects
+- Dynamic list rendering with diffing
+- Immutable updates with `state.todos = [...]`
+
+---
+
+## 🏁 Conclusion
+
+Echojs gives you the tools to build a fast, small, and understandable reactive UI system — **without frameworks**. But with great power comes great responsibility: manage state immutably, and clean up effects diligently.
+
+Happy hacking! 🧠🔧

@@ -1,25 +1,19 @@
+import { registerDisposal } from './echojs/lifecycle.js';
+import { mountList } from './echojs/list.js';
+import { createLocalState, disposeLocalState } from './echojs/local.js';
 import { effect, batch } from './echojs/reactivity.js';
-import { createState, createShallowState } from './echojs/state.js';
+import { createState } from './echojs/state.js';
 
 // --- Reactive State Management ---
 let nextId = 1;
-const state = createState({
-    todos: []
+const store = createState({
+    todos: [],
 });
-
-// --- Component Utilities ---
-const disposalRegistry = new WeakMap(); // Tracks cleanup functions for DOM nodes
-const localStates = new Map();         // Component-scoped state
-
-function deleteTodo(id) {
-    state.todos = state.todos.filter(t => t.id !== id);
-}
 
 // Component factory for a todo list item
 function createTodoItem(item) {
     // Component state (shallow for performance)
-    const localState = createShallowState({ count: 0 });
-    localStates.set(item.id, localState);
+    const localState = createLocalState(item.id, { count: 0 });
 
     // Create the DOM node
     const template = document.createElement('template');
@@ -39,7 +33,7 @@ function createTodoItem(item) {
 
     // --- Event Handlers ---
     removeBtn.addEventListener('click', () => {
-        deleteTodo(item.id);
+        store.todos = store.todos.filter(t => t.id !== item.id);
     });
 
     incBtn.addEventListener('click', () => {
@@ -52,50 +46,12 @@ function createTodoItem(item) {
     });
 
     // --- Cleanup Registration ---
-    const dispose = () => {
+    registerDisposal(li, () => {
         disposeEffect.dispose();
-        localStates.delete(item.id);
-    };
-
-    disposalRegistry.set(li, dispose);
-    return li;
-}
-
-// --- List Manager ---
-function mountTodoList(container, state) {
-    const nodeCache = new Map(); // Tracks mounted nodes
-
-    const rootEffect = effect(() => {
-        // Cleanup removed items
-        Array.from(nodeCache.keys()).forEach(id => {
-            if (!state.todos.some(todo => todo.id === id)) {
-                const node = nodeCache.get(id);
-                const dispose = disposalRegistry.get(node);
-                dispose?.();
-                container.removeChild(node);
-                nodeCache.delete(id);
-            }
-        });
-
-        // Add new items
-        state.todos.forEach(item => {
-            if (!nodeCache.has(item.id)) {
-                const node = createTodoItem(item);
-                nodeCache.set(item.id, node);
-                container.appendChild(node);
-            }
-        });
+        disposeLocalState(item.id);
     });
 
-    return () => {
-        rootEffect.dispose();
-        Array.from(nodeCache.values()).forEach(node => {
-            const dispose = disposalRegistry.get(node);
-            dispose?.();
-            container.removeChild(node);
-        });
-        nodeCache.clear();
-    };
+    return li;
 }
 
 // --- Form Handling ---
@@ -106,10 +62,10 @@ document.getElementById('addForm').addEventListener('submit', e => {
 
     if (text) {
         batch(() => {
-            state.todos.push({
+            store.todos = [...store.todos, {
                 id: nextId++,
                 text: text
-            });
+            }];
             input.value = '';
         });
     }
@@ -118,18 +74,12 @@ document.getElementById('addForm').addEventListener('submit', e => {
 // --- Application Bootstrap ---
 document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('todoList');
-    const unmount = mountTodoList(container, state);
-
-    document.getElementById('addMany')?.addEventListener('click', () => {
-        batch(() => {
-            for (let i = 0; i < 100; i++) {
-                state.todos.push({
-                    id: nextId++,
-                    text: `Item ${nextId}`
-                });
-            }
-        });
-    });
+    const unmount = mountList(
+        container,
+        () => store.todos,
+        item => item.id,
+        createTodoItem
+    );
 
     window.addEventListener('beforeunload', unmount);
 });

@@ -1,4 +1,3 @@
-// reactivity.js
 // Core reactive engine: effect registration, dependency tracking, triggering, and batching.
 
 /**

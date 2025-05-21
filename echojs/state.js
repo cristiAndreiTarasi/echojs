@@ -114,13 +114,4 @@ function createState(obj, { deep = true } = {}) {
     return proxy;
 }
 
-/**
- * Creates a shallow reactive proxy (no deep proxying of nested objects).
- * @param {Object|Array} obj - The raw object or array
- * @returns {Proxy} - A shallow reactive proxy
- */
-function createShallowState(obj) {
-    return createState(obj, { deep: false });
-}
-
-export { createState, createShallowState };
+export { createState };
