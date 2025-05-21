@@ -1,27 +1,24 @@
-import { createState, effect } from './vanillareactive.js';
+import { createState, effect, createShallowState, batch,  } from './vanillareactive.js';
 
-// Reactive global state for persistent application data
+// --- Reactive State Management ---
 let nextId = 1;
 const state = createState({
     todos: []
 });
 
-// Removes a todo item from the persistent state array
+// --- Component Utilities ---
+const disposalRegistry = new WeakMap(); // Tracks cleanup functions for DOM nodes
+const localStates = new Map();         // Component-scoped state
+
 function deleteTodo(id) {
     state.todos = state.todos.filter(t => t.id !== id);
 }
 
-// Local-only state: stores ephemeral UI state (e.g., counters) per todo item
-// These are not persisted or part of the main state
-const localStates = new Map();
-
 // Component factory for a todo list item
-function spunItem(item) {
-    // Lazily initialize and cache local state for this item
-    if (!localStates.has(item.id)) {
-        localStates.set(item.id, createState({ count: 0 }));
-    }
-    const localState = localStates.get(item.id);
+function createTodoItem(item) {
+    // Component state (shallow for performance)
+    const localState = createShallowState({ count: 0 });
+    localStates.set(item.id, localState);
 
     // Create the DOM node
     const template = document.createElement('template');
@@ -39,62 +36,105 @@ function spunItem(item) {
     const incBtn = li.querySelector('.increment');
     const countSpan = li.querySelector('.count');
 
-    // Remove from both global and local state
+    // --- Event Handlers ---
+    // Update global state on removal
     removeBtn.addEventListener('click', () => {
-        localStates.delete(item.id);
         deleteTodo(item.id);
     });
 
-    // Increment local UI-only counter
+    // Update local state
     incBtn.addEventListener('click', () => {
         localState.count++;
     });
 
-    // Reactive binding of the counter display
-    effect(() => {
+    // --- Reactive Bindings ---
+    const disposeEffect = effect(() => {
         countSpan.textContent = localState.count;
     });
 
+    // --- Cleanup Registration ---
+    const dispose = () => {
+        disposeEffect.dispose();
+        localStates.delete(item.id);
+    };
+
+    disposalRegistry.set(li, dispose);
     return li;
 }
 
-// Binds a reactive state array to a container element using a render function
-function mountReactive(el, state, renderFn) {
-    const cache = new Map();
-
-    effect(() => {
-        // Remove DOM nodes for todos that no longer exist
-        for (const [id, node] of cache.entries()) {
+// --- List Manager ---
+function mountTodoList(container, state) {
+    const nodeCache = new Map(); // Tracks mounted nodes
+    
+    // Main rendering effect
+    const rootEffect = effect(() => {
+        // Cleanup removed items
+        Array.from(nodeCache.keys()).forEach(id => {
             if (!state.todos.some(todo => todo.id === id)) {
-                el.removeChild(node);
-                cache.delete(id);
+                const node = nodeCache.get(id);
+                const dispose = disposalRegistry.get(node);
+                dispose?.();
+                container.removeChild(node);
+                nodeCache.delete(id);
             }
-        }
+        });
 
-        // Add new DOM nodes for todos that are not yet rendered
+        // Add new items
         state.todos.forEach(item => {
-            if (!cache.has(item.id)) {
-                const node = renderFn(item);
-                cache.set(item.id, node);
-                el.appendChild(node);
+            if (!nodeCache.has(item.id)) {
+                const node = createTodoItem(item);
+                nodeCache.set(item.id, node);
+                container.appendChild(node);
             }
         });
     });
+
+    // Unmount callback
+    return () => {
+        rootEffect.dispose();
+        Array.from(nodeCache.values()).forEach(node => {
+            const dispose = disposalRegistry.get(node);
+            dispose?.();
+            container.removeChild(node);
+        });
+        nodeCache.clear();
+    };
 }
 
-// Handle form submission to add new todos
+// --- Form Handling ---
 document.getElementById('addForm').addEventListener('submit', e => {
     e.preventDefault();
     const input = document.getElementById('todoInput');
-    const value = input.value.trim();
-    if (value) {
-        state.todos.push({ id: nextId++, text: value });
-        input.value = '';
+    const text = input.value.trim();
+    
+    if (text) {
+        batch(() => {
+            state.todos.push({
+                id: nextId++,
+                text: text
+            });
+            input.value = '';
+        });
     }
 });
 
-// When DOM is ready, mount reactive list
+// --- Application Bootstrap ---
 document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('todoList');
-    mountReactive(container, state, spunItem);
+    const unmount = mountTodoList(container, state);
+
+    // Example bulk addition
+    document.getElementById('addMany')?.addEventListener('click', () => {
+        batch(() => {
+            for (let i = 0; i < 100; i++) {
+                state.todos.push({
+                    id: nextId++,
+                    text: `Item ${nextId}`
+                });
+            }
+        });
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', unmount);
 });

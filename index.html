@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,16 +7,18 @@
     <style>
         body { font-family: sans-serif; padding: 2em; }
         li { margin-bottom: 0.5em; }
+        button { margin-left: 0.5em; }
     </style>
 </head>
 <body>
-
     <h1>Todos</h1>
+
     <form id="addForm">
         <input type="text" id="todoInput" placeholder="New todo" />
         <button type="submit">Add</button>
+        <button type="button" id="addMany">Add 100 Items</button>
     </form>
-
+    
     <ul id="todoList"></ul>
 
     <script type="module" src="./app.js"></script>
