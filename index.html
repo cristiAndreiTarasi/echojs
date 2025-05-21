@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Vanilla Reactive</title>
+    <style>
+        body { font-family: sans-serif; padding: 2em; }
+        li { margin-bottom: 0.5em; }
+    </style>
+</head>
+<body>
+
+    <h1>Todos</h1>
+    <form id="addForm">
+        <input type="text" id="todoInput" placeholder="New todo" />
+        <button type="submit">Add</button>
+    </form>
+
+    <ul data-template="todo-template" data-each="todos"></ul>
+
+    <template id="todo-template">
+        <li>
+            <span data-bind="textContent: item.text"></span>
+            <button data-on="click: state.removeTodo(item.id)">×</button>
+        </li>
+    </template>
+
+    <script type="module">
+        import { createState, mount } from './vanillareactive.js';
+
+        let nextId = 1;
+        const state = createState({
+            todos: [],
+            removeTodo(id) {
+                state.todos = state.todos.filter(t => t.id !== id);
+            }
+        });
+
+        document.getElementById('addForm').addEventListener('submit', e => {
+            e.preventDefault();
+            const input = document.getElementById('todoInput');
+            if (input.value.trim()) {
+                state.todos.push({ id: nextId++, text: input.value.trim() });
+                input.value = '';
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            mount(document.body, state);
+        });
+    </script>
+
+</body>
+</html>
