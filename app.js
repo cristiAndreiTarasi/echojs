@@ -1,4 +1,5 @@
-import { createState, effect, createShallowState, batch,  } from './vanillareactive.js';
+import { effect, batch } from './echojs/reactivity.js';
+import { createState, createShallowState } from './echojs/state.js';
 
 // --- Reactive State Management ---
 let nextId = 1;
@@ -37,12 +38,10 @@ function createTodoItem(item) {
     const countSpan = li.querySelector('.count');
 
     // --- Event Handlers ---
-    // Update global state on removal
     removeBtn.addEventListener('click', () => {
         deleteTodo(item.id);
     });
 
-    // Update local state
     incBtn.addEventListener('click', () => {
         localState.count++;
     });
@@ -65,8 +64,7 @@ function createTodoItem(item) {
 // --- List Manager ---
 function mountTodoList(container, state) {
     const nodeCache = new Map(); // Tracks mounted nodes
-    
-    // Main rendering effect
+
     const rootEffect = effect(() => {
         // Cleanup removed items
         Array.from(nodeCache.keys()).forEach(id => {
@@ -89,7 +87,6 @@ function mountTodoList(container, state) {
         });
     });
 
-    // Unmount callback
     return () => {
         rootEffect.dispose();
         Array.from(nodeCache.values()).forEach(node => {
@@ -106,7 +103,7 @@ document.getElementById('addForm').addEventListener('submit', e => {
     e.preventDefault();
     const input = document.getElementById('todoInput');
     const text = input.value.trim();
-    
+
     if (text) {
         batch(() => {
             state.todos.push({
@@ -123,7 +120,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('todoList');
     const unmount = mountTodoList(container, state);
 
-    // Example bulk addition
     document.getElementById('addMany')?.addEventListener('click', () => {
         batch(() => {
             for (let i = 0; i < 100; i++) {
@@ -135,6 +131,5 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Cleanup on page unload
     window.addEventListener('beforeunload', unmount);
 });
