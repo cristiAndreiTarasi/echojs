@@ -1,5 +1,5 @@
-import { reactiveList } from '../echojs/middle/utilities.js';
-import { batch } from '../echojs/core/reactivity.js';
+import { reactiveList } from '../../echojs/middle/utilities.js';
+import { batch } from '../../echojs/core/reactivity.js';
 import { addTodo, getTodos } from './store.js';
 import { createTodoItem } from './components/todoItem.js';
 
