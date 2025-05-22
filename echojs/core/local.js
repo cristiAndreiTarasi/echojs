@@ -1,3 +1,4 @@
+import { Mode } from "../middle/constants.js";
 import { createState } from "./state.js";
 
 /** @type {Map<string, any>} */
@@ -11,19 +12,9 @@ const localStateMap = new Map();
 */
 export function createLocalState(key, initial = {}) {
     if (!localStateMap.has(key)) {
-        localStateMap.set(key, createShallowState(initial));
+        localStateMap.set(key, createState(obj, { mode: Mode.SHALLOW }));
     }
     return localStateMap.get(key);
-}
-
-/**
- * Creates a shallow reactive proxy (no deep proxying of nested objects).
- * @param {Object|Array} obj - The raw object or array
- * @returns {Proxy} - A shallow reactive proxy
- * @private
- */
-function createShallowState(obj) {
-    return createState(obj, { deep: false });
 }
 
 /**
