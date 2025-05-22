@@ -1,32 +1,29 @@
-// Core reactive engine: effect registration, dependency tracking, triggering, and batching.
-
 /**
- * Global dependency map: target -> prop -> Set of effects
- * @type {WeakMap<Object, Map<string | symbol, Set<Function>>>}
+ * @typedef {() => void} EffectFunction
+ * @typedef {EffectFunction & { deps: Set<Set<EffectFunction>>, disposed: boolean, dispose: () => void }} WrappedEffect
  */
+
+/** @type {WeakMap<Object, Map<string | symbol, Set<WrappedEffect>>>} */
 const depMap = new WeakMap();
 
-/**
- * Currently executing effect function
- * @type {Function | null}
- */
+/** @type {WrappedEffect | null} */
 let activeEffect = null;
 
-/** @type {Set<Function>} */
+/** @type {Set<WrappedEffect>} */
 let effectQueue = new Set();
 
 /** @type {boolean} */
 let batched = false;
 
-/** @type {Set<Function>} */
+/** @type {Set<WrappedEffect>} */
 let queuedEffects = new Set();
 
-/** @type {Function} */
+/** @type {(error: unknown) => void} */
 let globalErrorHandler = (err) => console.error('Reactive error:', err);
 
 /**
  * Sets a custom global error handler for effect execution.
- * @param {Function} fn - Error handler function
+ * @param {(error: unknown) => void} fn
  */
 function setErrorHandler(fn) {
     globalErrorHandler = fn;
@@ -34,7 +31,7 @@ function setErrorHandler(fn) {
 
 /**
  * Internal: Cleans up dependencies from an effect
- * @param {Function} effect - Effect function
+ * @param {WrappedEffect} effect
  */
 function cleanup(effect) {
     effect.deps.forEach(dep => dep.delete(effect));
@@ -43,7 +40,7 @@ function cleanup(effect) {
 
 /**
  * Schedules an effect to be executed on the microtask queue.
- * @param {Function} effectFn - Effect function to run
+ * @param {WrappedEffect} effectFn
  */
 function scheduleEffect(effectFn) {
     effectQueue.add(effectFn);
@@ -62,8 +59,8 @@ function scheduleEffect(effectFn) {
 
 /**
  * Registers a reactive effect that re-runs when its dependencies change.
- * @param {Function} fn - Effect function to track and run
- * @returns {Function} A wrapped disposer-enabled version of the effect
+ * @param {EffectFunction} fn
+ * @returns {WrappedEffect}
  */
 function effect(fn) {
     const wrapped = () => {
@@ -89,8 +86,8 @@ function effect(fn) {
 
 /**
  * Tracks access to a property for dependency collection.
- * @param {Object} target - The reactive object
- * @param {string | symbol} prop - The property key accessed
+ * @param {Object} target
+ * @param {string | symbol} prop
  */
 function track(target, prop) {
     if (!activeEffect) return;
@@ -110,8 +107,8 @@ function track(target, prop) {
 
 /**
  * Triggers reactivity for a property on a target object.
- * @param {Object} target - The reactive object
- * @param {string | symbol} prop - The property key modified
+ * @param {Object} target
+ * @param {string | symbol} prop
  */
 function trigger(target, prop) {
     const propsMap = depMap.get(target);
@@ -130,9 +127,9 @@ function trigger(target, prop) {
 
 /**
  * Batches multiple state updates to minimize re-runs of dependent effects.
- * @param {Function} fn - Function that performs multiple updates
+ * @param {() => void} fn
  */
-function batch(fn) {
+function batchUpdates(fn) {
     if (batched) return fn();
     batched = true;
     try {
@@ -145,4 +142,4 @@ function batch(fn) {
     }
 }
 
-export { effect, track, trigger, batch, setErrorHandler };
+export { effect, track, trigger, batchUpdates, setErrorHandler };

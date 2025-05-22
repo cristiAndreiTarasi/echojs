@@ -5,14 +5,16 @@ import { disposeNode } from '../core/lifecycle.js';
  * Mounts a reactive list of items into a DOM container.
  * Handles diffing, cleanup, and DOM updates.
  *
- * @param {HTMLElement} container - DOM node to render into
- * @param {Function} getItems    - Getter that returns the current array of items
- * @param {Function} getKey      - Function to extract a unique ID from an item
- * @param {Function} renderItem  - Function(item) => DOM node
- * @returns {Function}           - Unmount callback to clean everything up
+ * @template T
+ * @param {HTMLElement} container
+ * @param {() => T[]} getItems
+ * @param {(item: T) => string} getKey
+ * @param {(item: T) => Node} renderItem
+ * @returns {() => void}
  */
 export function reactiveList(container, getItems, getKey, renderItem) {
     // Cache mapping item IDs to their corresponding DOM nodes
+    /** @type {Map<string, Node>} */
     const nodeCache = new Map(); // id => DOM node
 
     // Root effect watches the reactive array (via getItems())

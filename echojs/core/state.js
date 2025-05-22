@@ -14,9 +14,14 @@ class ReactiveArray extends Array {
 
     constructor(...args) {
         super(...(args.length === 1 && Array.isArray(args[0]) ? args[0] : args));
+        /** @type {Proxy|null} */
         this.proxy = null;
     }
 
+    /**
+     * @param {Proxy} proxy
+     * @returns {this}
+    */
     withProxy(proxy) {
         this.proxy = proxy;
         return this;
@@ -74,9 +79,8 @@ class ReactiveArray extends Array {
 
 /**
  * Creates a reactive proxy of an object or array.
- * @param {Object|Array} obj - The raw object or array to proxy
- * @param {Object} [options] - Options for state creation
- * @param {boolean} [options.deep=true] - Whether to deeply proxy nested objects
+ * @param {Object|Array} obj
+ * @param {{ deep?: boolean }} [options]
  * @returns {Proxy} - A reactive proxy
  */
 function createState(obj, { deep = true } = {}) {
