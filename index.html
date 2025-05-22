@@ -23,6 +23,19 @@
     
     <ul id="todoList"></ul>
 
+    <hr />
+    
+    <h2>Run Benchmarks</h2>
+
+    <progress id="progress-bar" max="7" value="0" style="width: 100%;"></progress>
+    <button onclick="runBenchmarks()">Start Benchmarks</button>
+    <div id="benchmark-log" style="margin-top: 1em; font-family: monospace;"></div>
+
+    <script type="module">
+        import { runBenchmarks } from './benchmarks/benchmarks.js';
+        window.runBenchmarks = runBenchmarks;
+    </script>
+
     <script type="module" src="./src/app.js"></script>
 </body>
 </html>
