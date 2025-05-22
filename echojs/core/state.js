@@ -1,136 +1,70 @@
 // state.js
 // State creation and Proxy logic for deep/shallow reactive tracking
 
+import { Mode } from '../middle/constants.js';
 import { track, trigger } from './reactivity.js';
 
 /** @type {WeakMap<Object, any>} */
 const proxyCache = new WeakMap();
 
 /**
- * Custom subclass of Array that hooks into the reactivity system.
- */
-class ReactiveArray extends Array {
-    static get [Symbol.species]() { return Array; }
-
-    constructor(...args) {
-        super(...(args.length === 1 && Array.isArray(args[0]) ? args[0] : args));
-        /** @type {Proxy|null} */
-        this.proxy = null;
-    }
-
-    /**
-     * @param {Proxy} proxy
-     * @returns {this}
-    */
-    withProxy(proxy) {
-        this.proxy = proxy;
-        return this;
-    }
-
-    triggerMutation() {
-        if (this.proxy) {
-            // length always needs to notify length watchers
-            trigger(this.proxy, 'length');
-        }
-    }
-
-    push(...args) {
-        const res = super.push(...args);
-        this.triggerMutation();
-        return res;
-    }
-
-    pop() {
-        const res = super.pop();
-        this.triggerMutation();
-        return res;
-    }
-
-    shift() {
-        const res = super.shift();
-        this.triggerMutation();
-        return res;
-    }
-
-    unshift(...args) {
-        const res = super.unshift(...args);
-        this.triggerMutation();
-        return res;
-    }
-
-    splice(start, deleteCount, ...items) {
-        const res = super.splice(start, deleteCount, ...items);
-        this.triggerMutation();
-        return res;
-    }
-
-    sort(compareFn) {
-        super.sort(compareFn);
-        this.triggerMutation();
-        return this;
-    }
-
-    reverse() {
-        super.reverse();
-        this.triggerMutation();
-        return this;
-    }
-}
-
-/**
  * Creates a reactive proxy of an object or array.
  * @param {Object|Array} obj
- * @param {{ deep?: boolean }} [options]
+ * @param {{ mode?: Mode }} [options]
  * @returns {Proxy} - A reactive proxy
  */
-function createState(obj, { deep = true } = {}) {
+function createState(obj, { mode = Mode.SHALLOW } = {}) {
     if (typeof obj !== 'object' || obj === null) return obj;
     if (proxyCache.has(obj)) return proxyCache.get(obj);
+
+    const childCache = new WeakMap();
 
     const handler = {
         get(target, prop, receiver) {
             track(target, prop);
             const val = Reflect.get(target, prop, receiver);
-            if (deep && typeof val === 'object' && val !== null) {
-                return createState(val, { deep });
+
+            if (mode === Mode.MANUAL) {
+                return val;
             }
+
+            if (mode === Mode.DEEP && typeof val === 'object' && val !== null) {
+                if (childCache.has(val)) return childCache.get(val);
+                const p = createState(val, { mode });
+                childCache.set(val, p);
+                return p;
+            }
+
             return val;
         },
 
         set(target, prop, value, receiver) {
-            const oldValue = target[prop];
-            const result = Reflect.set(target, prop, value);
+            const old = target[prop];
+            const ok = Reflect.set(target, prop, value, receiver);
+            if (old === value) return ok;
 
-            // hot-path, array + numeric props
-            if (Array.isArray(target) && !isNaN(prop)) {
-                if (oldValue !== value) {
-                    // triggeronly that index
+            const isArray = Array.isArray(target);
+            const isNumericKey = !isNaN(prop);
+            const isLengthProp = prop === 'length';
+
+            // if it's an array index or length change, trigger both index & length
+            if (isArray && (isNumericKey || isLengthProp)) {
+                // index change
+                if (isNumericKey) {
                     trigger(target, prop);
-                    
-                    // trigger length if we've pushed past it
-                    if (Number(prop) >= target.length) {
-                        trigger(target, 'length');
-                    }
                 }
+                // always trigger length when array changes
+                trigger(target, 'length');
             } else {
-                // default behavior for objects and non-numeric props
-                if (oldValue !== value) trigger(target, prop);
+                // plain object or non-array prop
+                trigger(target, prop);
             }
-            
-            return result;
+
+            return ok;
         }
     };
 
-    let proxy;
-
-    if (Array.isArray(obj)) {
-        const safeArray = Array.from(obj);
-        const reactiveArray = new ReactiveArray(...safeArray);
-        proxy = new Proxy(reactiveArray.withProxy(reactiveArray), handler);
-    } else {
-        proxy = new Proxy(obj, handler);
-    }
-
+    const proxy = new Proxy(obj, handler);
     proxyCache.set(obj, proxy);
     return proxy;
 }

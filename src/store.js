@@ -1,8 +1,9 @@
 
 import { createState } from '../echojs/core/state.js';
+import { Mode } from '../echojs/middle/constants.js';
 
 /* State */
-const store = createState({
+export const store = createState({
     todos: [],
     totalAdded: 0,
 });

@@ -1,6 +1,6 @@
 import { reactiveList } from '../../echojs/middle/utilities.js';
 import { batchUpdates } from '../../echojs/core/reactivity.js';
-import { addTodo, getTodos, getTotalCount } from './store.js';
+import { addTodo, getTodos, getTotalCount, store } from './store.js';
 import { createTodoItem } from './components/todoItem.js';
 import { effect } from '../echojs/core/reactivity.js';
 
