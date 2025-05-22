@@ -96,10 +96,27 @@ function createState(obj, { deep = true } = {}) {
             }
             return val;
         },
-        set(target, prop, value) {
-            const old = target[prop];
+
+        set(target, prop, value, receiver) {
+            const oldValue = target[prop];
             const result = Reflect.set(target, prop, value);
-            if (old !== value) trigger(target, prop);
+
+            // hot-path, array + numeric props
+            if (Array.isArray(target) && !isNaN(prop)) {
+                if (oldValue !== value) {
+                    // triggeronly that index
+                    trigger(target, prop);
+                    
+                    // trigger length if we've pushed past it
+                    if (Number(prop) >= target.length) {
+                        trigger(target, 'length');
+                    }
+                }
+            } else {
+                // default behavior for objects and non-numeric props
+                if (oldValue !== value) trigger(target, prop);
+            }
+            
             return result;
         }
     };
