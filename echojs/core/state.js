@@ -29,8 +29,8 @@ class ReactiveArray extends Array {
 
     triggerMutation() {
         if (this.proxy) {
+            // length always needs to notify length watchers
             trigger(this.proxy, 'length');
-            trigger(this.proxy, '[]');
         }
     }
 

@@ -113,10 +113,31 @@ function track(target, prop) {
 function trigger(target, prop) {
     const propsMap = depMap.get(target);
     if (!propsMap) return;
-    const effects = propsMap.get(prop) || new Set();
-    const lengthEffects = propsMap.get('length') || new Set();
-    const allEffects = new Set([...effects, ...lengthEffects]);
-    allEffects.forEach(effect => {
+
+    const effectsToRun = new Set();
+    
+    //numeric index on an Array?
+    if (Array.isArray(target) && !isNaN(prop)) {
+        //only trigger effects for this exact index
+        const idxDeps = propsMap.get(prop);
+        if (idxDeps) idxDeps.forEach(fn => effectsToRun.add(fn));
+
+        // if new index >= old length, also trigger length deps
+        const oldLength = target.length;
+        const numericProp = Number(prop);
+
+        if (numericProp >= oldLength) {
+            const lenDeps = propsMap.get('length');
+            if (lenDeps) lenDeps.forEach(fn => effectsToRun.add(fn));
+        }
+    } else {
+        // non array or non numeric -> trigger exactly that key
+        const deps = propsMap.get(prop);
+        if (deps) deps.forEach(fn => effectsToRun.add(fn));
+    }
+    
+    //schedule
+    effectsToRun.forEach(effect => {
         if (batched) {
             queuedEffects.add(effect);
         } else {
