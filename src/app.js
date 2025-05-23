@@ -24,9 +24,28 @@ document.getElementById('addForm').addEventListener('submit', e => {
          * This ensures a single, efficient update to the UI.
          */
         batchUpdates(() => {
-            addTodo(text); // mutates both `todos` and `totalAdded`
+            addTodo(text); 
             input.value = '';
         });
+
+        /**
+         * But we could use a 2 phase batcahUpdates if we have heavy computations
+         * we can separate data batching from iui rendering
+         * 
+         * batchUpdates(
+         *   () => {
+         *     // Phase 1: all your heavy mutates here…
+         *     addTodo(text);
+         *     // potentially dozens of changes or complex loops…
+         *   },
+         *   () => {
+         *     // Phase 2: run *after* all reactive effects have flushed,
+         *     // if you have extra cleanup or post-render logic
+         *     input.value = '';
+         *     logAnalytics(); // fire after UI update
+         *   }
+         * );
+        */
     }
 });
 

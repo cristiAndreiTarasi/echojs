@@ -53,6 +53,16 @@ function cleanup(effect) {
  * @param {WrappedEffect} effectFn
  */
 function scheduleEffect(effectFn) {
+    // if it’s low-priority, use requestIdleCallback
+    if (effectFn.idle && typeof requestIdleCallback === 'function') {
+        requestIdleCallback(() => {
+            try { effectFn(); }
+            catch (e) { globalErrorHandler(e); }
+        });
+        return;
+    }
+
+    // otherwise microtask as before
     if (effectQueue.has(effectFn)) return; // already schedules
     effectQueue.add(effectFn);
 
@@ -60,23 +70,20 @@ function scheduleEffect(effectFn) {
         const effects = Array.from(effectQueue);
         effectQueue.clear();
         
-        for (const fn of effects) {
-            try {
-                fn();
-            } catch (e) {
-                globalErrorHandler(e);
-            }
-        }
+        effects.forEach(fn => {
+            try { fn(); }
+            catch (e) { globalErrorHandler(e); }
+        });
     });
 }
 
 /**
  * Registers a reactive effect that re-runs when its dependencies change.
  * Uses a pool of wrappers to reduce GC churn.
- * @param {EffectFunction} fn
- * @returns {WrappedEffect}
+ * @param {() => void} fn
+ * @param {{ idle?: boolean }} [opts]
  */
-function effect(fn) {
+function effect(fn, { idle = false } = {}) {
     // Try to reuse a disposed wrapper for this fn
     const pool = wrapperPool.get(fn) || [];
     let wrapped = pool.pop();
@@ -114,6 +121,7 @@ function effect(fn) {
         wrapped.disposed = false;
     }
     
+    wrapped.idle = idle;  // mark its scheduling preference
     wrapped(); // run immediately to collect initial deps
     return wrapped;
 }
@@ -186,19 +194,31 @@ function trigger(target, prop) {
 }
 
 /**
- * Batches multiple state updates to minimize re-runs of dependent effects.
- * @param {() => void} fn
+ * Two-phase batch:
+ *  - Phase 1: run all state mutations under batched=true
+ *  - Phase 2: after internal effects flush, run your `renderFn` as a microtask
+ *
+ * @param {() => void} dataFn - heavy state mutations
+ * @param {() => void} [renderFn] - optionsl UI-flush or side-effects
  */
-function batchUpdates(fn) {
-    if (batched) return fn();
+function batchUpdates(dataFn, renderFn) {
+    // Phase 1: collect all triggers
     batched = true;
 
     try {
-        fn();
+        dataFn();
     } finally {
         batched = false;
-        queuedEffects.forEach(scheduleEffect);
+        // flush all reactive effects now
+        const toNotify = Array.from(queuedEffects);
+
         queuedEffects.clear();
+        toNotify.forEach(scheduleEffect);
+
+        //Phase 2: let user run render/update logic
+        if (typeof renderFn === 'function') {
+            queueMicrotask(renderFn);
+        }
     }
 }
 
