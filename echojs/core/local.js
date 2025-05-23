@@ -12,7 +12,7 @@ const localStateMap = new Map();
 */
 export function createLocalState(key, initial = {}) {
     if (!localStateMap.has(key)) {
-        localStateMap.set(key, createState(obj, { mode: Mode.SHALLOW }));
+        localStateMap.set(key, createState(initial, { mode: Mode.SHALLOW }));
     }
     return localStateMap.get(key);
 }
