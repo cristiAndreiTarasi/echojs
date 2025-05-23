@@ -1,10 +1,7 @@
 import { batchUpdates } from '../../echojs/core/reactivity.js';
-import { addTodo, getTodos, getTotalCount, store } from './store.js';
-import { createTodoItem } from './components/todoItem.js';
+import { addTodo, getTotalCount, store } from './store.js';
 import { effect } from '../echojs/core/reactivity.js';
-import { virtualList } from '../echojs/middle/virtualList.js';
-
-
+import { bindList } from '../echojs/middle/bindList.js';
 
 // --- Form Handling ---
 document.getElementById('addForm').addEventListener('submit', e => {
@@ -51,17 +48,14 @@ document.getElementById('addForm').addEventListener('submit', e => {
 
 // --- Application Bootstrap ---
 document.addEventListener('DOMContentLoaded', () => {
-    const container = document.getElementById('todoList');
-    const unmount = virtualList(
-        container,
-        getTodos,
-        item => item.id,
-        createTodoItem,
-        {
-            buffer: 10,
-            itemHeight: 50 // if each todo row is 50px tall
-        }
-    );
+    // const ul = document.getElementById('todoList');
+    // const unmount = bindList(ul, () => store.todos);
+
+    // For virtualization:
+    const big = document.getElementById('todoList');
+    const unmountBig = bindList(big, () => store.todos, {
+        virtual: { itemHeight: 50, buffer: 10 }
+    });
 
     const counterEl = document.getElementById('counter');
 
@@ -69,5 +63,6 @@ document.addEventListener('DOMContentLoaded', () => {
         counterEl.textContent = `Total todos added: ${getTotalCount()}`;
     });
 
-    window.addEventListener('beforeunload', unmount);
+    // window.addEventListener('beforeunload', unmount);
+    window.addEventListener('beforeunload', unmountBig);
 });

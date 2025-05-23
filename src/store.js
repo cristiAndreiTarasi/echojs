@@ -1,10 +1,18 @@
 
 import { createState } from '../echojs/core/state.js';
+import { registerListRenderer } from '../echojs/middle/bindList.js';
+import { createTodoItem } from './components/todoItem.js';
 
 /* State */
 export const store = createState({
     todos: [],
     totalAdded: 0,
+});
+
+/* Register renderes */
+registerListRenderer(store.todos, {
+    key: todo => todo.id.toString(),
+    render: todo => createTodoItem(todo),
 });
 
 /* Selectors */
