@@ -1,4 +1,4 @@
-import { Mode } from "../middle/constants.js";
+import { Mode } from "../common/constants.js";
 import { createState } from "./state.js";
 
 /** @type {Map<string, any>} */

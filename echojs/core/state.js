@@ -1,7 +1,7 @@
 // state.js
 // State creation and Proxy logic for deep/shallow reactive tracking
 
-import { Mode } from '../middle/constants.js';
+import { Mode } from '../common/constants.js';
 import { track, trigger } from './reactivity.js';
 
 /** @type {WeakMap<Object, any>} */

@@ -1,8 +1,8 @@
-import { reactiveList } from '../../echojs/middle/utilities.js';
 import { batchUpdates } from '../../echojs/core/reactivity.js';
 import { addTodo, getTodos, getTotalCount, store } from './store.js';
 import { createTodoItem } from './components/todoItem.js';
 import { effect } from '../echojs/core/reactivity.js';
+import { virtualList } from '../echojs/middle/virtualList.js';
 
 
 
@@ -52,11 +52,15 @@ document.getElementById('addForm').addEventListener('submit', e => {
 // --- Application Bootstrap ---
 document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('todoList');
-    const unmount = reactiveList(
+    const unmount = virtualList(
         container,
         getTodos,
         item => item.id,
-        createTodoItem
+        createTodoItem,
+        {
+            buffer: 10,
+            itemHeight: 50 // if each todo row is 50px tall
+        }
     );
 
     const counterEl = document.getElementById('counter');

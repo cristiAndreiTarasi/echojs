@@ -1,6 +1,5 @@
 
 import { createState } from '../echojs/core/state.js';
-import { Mode } from '../echojs/middle/constants.js';
 
 /* State */
 export const store = createState({

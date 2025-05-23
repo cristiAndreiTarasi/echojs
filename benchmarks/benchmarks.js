@@ -1,7 +1,7 @@
 import { createState } from '../echojs/core/state.js';
 import { effect, batchUpdates } from '../echojs/core/reactivity.js';
 import { createLocalState, disposeLocalState } from '../echojs/core/local.js';
-import { reactiveList } from '../echojs/middle/utilities.js';
+import { reactiveList } from '../echojs/middle/reactiveList.js';
 
 function logMessage(message) {
     const log = document.getElementById('benchmark-log');
